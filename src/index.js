@@ -32,7 +32,7 @@ const loadFont = (url) => {
     })
 }
 
-let tool = 'convert'
+let tool = 'select'
 
 const selection = new Set()
 
@@ -90,15 +90,30 @@ const renderGlyph = (glyph) => {
             })
             path.addEventListener('click', (e) => {
                 const id = e.target.id
-                if (tool === 'convert') {
-                    const command = glyph.path.commands[id]
-                    glyph.path.commands[id] = {
-                        type: 'L',
-                        x: command.x,
-                        y: command.y,
+                if (tool === 'select') {
+                    if (!e.shiftKey) {
+                        selection.clear()
                     }
-                    glyph.path = glyph.path
-                } else if (tool === 'select') {
+                    selection.add(parseInt(id))
+                }
+                renderGlyph(glyph)
+            })
+            g.appendChild(path)
+        } else if (c2.type === 'C') {
+            const path = document.createElementNS(svgNS, 'path')
+            path.setAttribute('id', i)
+            path.setAttribute('d', `M${c1.x} ${c1.y}C${c2.x1} ${c2.y1} ${c2.x2} ${c2.y2} ${c2.x} ${c2.y}`);
+            path.setAttribute('stroke-width', 20)
+            path.setAttribute('stroke', color)
+            path.addEventListener('mouseenter', () => {
+                path.setAttribute('stroke', 'red')
+            })
+            path.addEventListener('mouseleave', () => {
+                path.setAttribute('stroke', color)
+            })
+            path.addEventListener('click', (e) => {
+                const id = e.target.id
+                if (tool === 'select') {
                     if (!e.shiftKey) {
                         selection.clear()
                     }
@@ -111,18 +126,25 @@ const renderGlyph = (glyph) => {
     }
 }
 
-loadFont('/fonts/KaTeX_Size1-Regular.ttf').then((font) => {
+loadFont('/fonts/KaTeX_Size4-Regular.otf').then((font) => {
     console.log(font)
-    const index = font.glyphNames.nameToGlyphIndex(glyphName)
+    const index = font.charToGlyphIndex('\u221A')
     const radical = font.glyphs.glyphs[index]
 
-    const convertButton = document.querySelector('#convertButton')
-    const selectButton = document.querySelector('#selectButton')
     const mergeButton = document.querySelector('#mergeButton')
+    const saveButton = document.querySelector('#saveButton')
 
-    convertButton.addEventListener('click', () => tool = 'convert')
-    selectButton.addEventListener('click', () => tool = 'select')
     mergeButton.addEventListener('click', () => {
+        for (const i of selection) {
+            const command = radical.path.commands[i]
+            radical.path.commands[i] = {
+                type: 'L',
+                x: command.x,
+                y: command.y,
+            }
+        }
+
+        // TODO: do the conversion and merging in one step
         console.log(selection)
         for (const i of selection) {
             const c1 = radical.path.commands[i - 1]
@@ -141,6 +163,10 @@ loadFont('/fonts/KaTeX_Size1-Regular.ttf').then((font) => {
         console.log(radical.path.commands)
 
         renderGlyph(radical)
+    })
+
+    saveButton.addEventListener('click', () => {
+        font.download()
     })
 
     renderGlyph(radical)
